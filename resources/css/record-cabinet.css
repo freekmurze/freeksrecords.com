@@ -2126,6 +2126,13 @@ html[data-transition='return']::view-transition-new(selected-sleeve) {
         inset 0 1px #e9c18d80,
         0 12px 14px -5px #34201266;
 }
+.has-single-shelf .catalog-record::before {
+    background: radial-gradient(
+        ellipse 78% 58% at 45% 0,
+        #f4c7801c,
+        transparent 80%
+    );
+}
 .has-single-shelf .catalog-record::after {
     display: none;
 }
