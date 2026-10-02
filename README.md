@@ -74,6 +74,10 @@ composer test      # Pint, PHPStan and Pest
 composer ci:check  # everything above, plus `vp check` and tsc
 ```
 
+## Deployment
+
+This site runs on [Laravel Cloud](https://cloud.laravel.com). Every push to `main` is deployed automatically.
+
 ## License
 
 The code is open source under the MIT license. Album artwork belongs to its respective owners.
