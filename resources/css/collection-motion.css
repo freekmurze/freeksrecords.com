@@ -1,0 +1,12 @@
+/* Sleeve changes leave the wooden shelves still. */
+.collection-browser .catalog-record {
+    animation: none;
+}
+
+.collection-browser[data-shelf-changing] .catalog-record {
+    pointer-events: none;
+}
+
+.collection-browser[data-shelf-changing] .catalog-record-art {
+    transition: none;
+}

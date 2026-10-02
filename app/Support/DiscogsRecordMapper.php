@@ -1,0 +1,128 @@
+<?php
+
+namespace App\Support;
+
+class DiscogsRecordMapper
+{
+    public string $placeholderCover = '/images/record-placeholder.svg';
+
+    public function __construct(
+        protected DiscogsTracklist $tracklist,
+    ) {}
+
+    /**
+     * @param  array<string, mixed>  $entry
+     * @param  array<string, mixed>  $release
+     * @param  array<string, mixed>  $master
+     * @return array<string, mixed>
+     */
+    public function record(array $entry, array $release, array $master): array
+    {
+        $basic = $entry['basic_information'];
+        $artists = array_map(fn (array $artist): string => $this->artistName($artist['name']), $basic['artists']);
+        $artist = implode(', ', $artists);
+
+        return [
+            'id' => $basic['id'],
+            'instanceId' => $entry['instance_id'],
+            'artist' => $artist,
+            'artists' => $artists,
+            'title' => $basic['title'],
+            'displayTitle' => $basic['title'],
+            'edition' => '',
+            'year' => $basic['year'] ?? 0,
+            'originalYear' => $this->originalYear($basic, $release, $master),
+            'addedAt' => $entry['date_added'],
+            'label' => $basic['labels'][0]['name'] ?? '',
+            'catalogNumber' => $basic['labels'][0]['catno'] ?? '',
+            'format' => '',
+            'genres' => $basic['genres'] ?? [],
+            'styles' => $basic['styles'] ?? [],
+            'cover' => $this->placeholderCover,
+            'coverSource' => $basic['cover_image'] ?: $this->placeholderCover,
+            'discogsUrl' => "https://www.discogs.com/release/{$basic['id']}",
+            ...$this->listeningLinks($artist, $basic['title']),
+            'trackSource' => 'release',
+            'tracks' => $this->tracks($release['tracklist'] ?? [], $artist),
+        ];
+    }
+
+    /**
+     * @param  array<int, array<string, mixed>>  $entries
+     * @return array<int, array<string, mixed>>
+     */
+    public function tracks(array $entries, string $fallbackArtist): array
+    {
+        return array_map(
+            fn (array $track): array => $this->track($track, $fallbackArtist),
+            $this->tracklist->tracks($entries),
+        );
+    }
+
+    /**
+     * @param  array<string, mixed>  $track
+     * @return array<string, mixed>
+     */
+    public function track(array $track, string $fallbackArtist): array
+    {
+        $artist = empty($track['artists'])
+            ? $fallbackArtist
+            : implode(', ', array_map(fn (array $artist): string => $this->artistName($artist['name']), $track['artists']));
+
+        return [
+            'position' => $track['position'] ?? '',
+            'title' => $track['title'],
+            'artist' => $artist,
+            'duration' => $track['duration'] ?? '',
+            ...$this->listeningLinks($artist, $track['title']),
+        ];
+    }
+
+    /**
+     * @return array{
+     *     spotifyUrl: string,
+     *     spotifySearch: bool,
+     *     appleMusicUrl: string,
+     *     appleMusicSearch: bool
+     * }
+     */
+    public function listeningLinks(string $artist, string $title): array
+    {
+        $term = rawurlencode("{$artist} {$title}");
+
+        return [
+            'spotifyUrl' => "https://open.spotify.com/search/{$term}",
+            'spotifySearch' => true,
+            'appleMusicUrl' => "https://music.apple.com/be/search?term={$term}",
+            'appleMusicSearch' => true,
+        ];
+    }
+
+    public function artistName(string $name): string
+    {
+        return preg_replace('/ \([0-9]+\)$/', '', $name) ?? $name;
+    }
+
+    /**
+     * @param  array<string, mixed>  $basic
+     * @param  array<string, mixed>  $release
+     * @param  array<string, mixed>  $master
+     */
+    protected function originalYear(array $basic, array $release, array $master): ?int
+    {
+        $formats = array_merge(...array_map(
+            fn (array $format): array => $format['descriptions'] ?? [],
+            $basic['formats'] ?? [],
+        ));
+
+        $originalYear = $master['year'] ?? null;
+
+        if (empty($basic['master_id'])) {
+            if (! array_intersect(['Reissue', 'Remastered'], $formats)) {
+                $originalYear = $release['year'] ?? null;
+            }
+        }
+
+        return $originalYear ?: null;
+    }
+}
