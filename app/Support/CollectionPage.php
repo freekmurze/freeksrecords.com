@@ -2,13 +2,16 @@
 
 namespace App\Support;
 
+use Closure;
 use Inertia\Inertia;
 use Inertia\Response;
+use Throwable;
 
 class CollectionPage
 {
     public function __construct(
         protected RecordCollection $collection,
+        protected StoredShareImages $shareImages,
     ) {}
 
     /** @param array<string, mixed>|null $sharedRecord */
@@ -35,10 +38,10 @@ class CollectionPage
             'artist' => $record['artist'],
             'description' => $record['shareDescription'],
             'url' => url($record['shareUrl']),
-            'image' => route('recordShareImage', [
-                'instanceId' => $record['instanceId'],
-                'v' => 3,
-            ]),
+            'image' => $this->shareImageUrl(
+                fn (): string => $this->shareImages->recordUrl($record),
+                route('recordShareImage', ['instanceId' => $record['instanceId'], 'v' => 4]),
+            ),
         ];
     }
 
@@ -49,8 +52,27 @@ class CollectionPage
             'title' => "Freek's records",
             'description' => "A lifetime of digging, one shelf at a time. Browse Freek's vinyl collection by artist, decade or genre, and find your next favourite record.",
             'url' => route('home'),
-            'image' => route('collectionShareImage', ['v' => 2]),
+            'image' => $this->shareImageUrl(
+                fn (): string => $this->shareImages->collectionUrl(),
+                route('collectionShareImage', ['v' => 3]),
+            ),
             'imageAlt' => "Freek's records: a wooden shelf of album sleeves beneath a vintage turntable and speakers",
         ];
+    }
+
+    /**
+     * A failing share image should never take the page down with it.
+     *
+     * @param  Closure(): string  $storedUrl
+     */
+    protected function shareImageUrl(Closure $storedUrl, string $fallbackUrl): string
+    {
+        try {
+            return $storedUrl();
+        } catch (Throwable $exception) {
+            report($exception);
+
+            return $fallbackUrl;
+        }
     }
 }

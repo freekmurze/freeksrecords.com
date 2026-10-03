@@ -40,9 +40,8 @@ it('copies a deferred Discogs cover and replaces the placeholder with its public
     $this->disk->assertExists($path);
     expect($this->collection->find($this->record['instanceId'])['cover'])->toBe($this->disk->url($path));
     Http::assertSentCount(1);
-    $this->get(route('recordShareImage', $this->record['instanceId']))
-        ->assertOk()
-        ->assertHeader('Content-Type', 'image/png');
+    $this->get(route('recordShareImage', $this->record['instanceId']))->assertRedirect();
+    expect($this->disk->allFiles('share/records'))->toHaveCount(1);
 });
 
 it('keeps the record when a cover download fails so it can be retried', function () {

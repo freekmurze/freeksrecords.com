@@ -1,6 +1,7 @@
 <?php
 
 use App\Support\RecordCollection;
+use Illuminate\Support\Facades\Storage;
 use Inertia\Testing\AssertableInertia as Assert;
 
 it('lets guests browse the whole collection without downloading every track link', function () {
@@ -20,6 +21,9 @@ it('lets guests browse the whole collection without downloading every track link
             ->where('collection.records.1.appleMusicUrl', 'https://music.apple.com/be/album/shebang/1630427079')
             ->where('collection.records.1.spotifyUrl', 'https://open.spotify.com/album/1khpMdVH3EXz5RWt4WRAbg')
             ->where('collection.records.3.spotifySearch', true)
+            ->missing('collection.records.0.discogsUrl')
+            ->missing('collection.records.0.coverSource')
+            ->missing('collection.records.0.catalogNumber')
         );
 });
 
@@ -58,7 +62,9 @@ it('renders social metadata for a shared record', function () {
         ->assertSee('name="twitter:site" content="@freekmurze"', false)
         ->assertSee('name="theme-color" content="#292a22"', false)
         ->assertSee('name="twitter:card" content="summary_large_image"', false)
-        ->assertSee(route('recordShareImage', 2189134863), false);
+        ->assertSee('property="og:image:type" content="image/jpeg"', false)
+        ->assertSee('property="og:image" content="'.storedShareImageUrl('share/records/2189134863-'), false)
+        ->assertSee('name="twitter:image" content="'.storedShareImageUrl('share/records/2189134863-'), false);
 });
 
 it('passes the shared record to the page so it opens immediately', function () {
@@ -85,32 +91,38 @@ it('returns 404 for unknown shared records', function () {
     $this->get('/record/9999999999/unknown-album')->assertNotFound();
 });
 
-it('renders a full size preview image for a shared record', function () {
+it('stores a small preview image for a shared record and redirects to it', function () {
     $response = $this->get(route('recordShareImage', 2189134863));
 
-    $response->assertOk()->assertHeader('Content-Type', 'image/png');
+    $response->assertRedirect()->assertHeaderMissing('Set-Cookie');
+    expect($response->headers->get('Cache-Control'))->toContain('public', 's-maxage=3600')
+        ->and($response->headers->get('Location'))->toStartWith(storedShareImageUrl('share/records/2189134863-'));
 
-    [$width, $height] = getimagesizefromstring($response->getContent());
-
-    expect($width)->toBe(1200)->and($height)->toBe(630);
+    expectStoredShareImage($response->headers->get('Location'));
 });
 
 it('returns 404 for the preview image of an unknown record', function () {
     $this->get(route('recordShareImage', 9999999999))->assertNotFound();
 });
 
-it('renders a full size preview image for the collection', function () {
-    $response = $this->get(route('collectionShareImage'));
+it('stores a small preview image for the collection and redirects to it', function () {
+    $response = $this->get(route('collectionShareImage', ['v' => 2]));
 
-    $response->assertOk()->assertHeader('Content-Type', 'image/png');
+    $response->assertRedirect()->assertHeaderMissing('Set-Cookie');
+    expect($response->headers->get('Cache-Control'))->toContain('public', 's-maxage=3600')
+        ->and($response->headers->get('Location'))->toStartWith(storedShareImageUrl('share/collection-'));
 
-    [$width, $height] = getimagesizefromstring($response->getContent());
+    expectStoredShareImage($response->headers->get('Location'));
+});
 
-    expect($width)->toBe(1200)->and($height)->toBe(630);
+it('renders each share image only once', function () {
+    $this->get(route('home'))->assertOk();
+    $this->get(route('collectionShareImage'))->assertRedirect();
+
+    expect(Storage::disk('public')->allFiles('share'))->toHaveCount(1);
 });
 
 it('renders social metadata for the collection homepage', function () {
-    $collectionImage = route('collectionShareImage', ['v' => 2]);
     $home = route('home');
 
     $this->get(route('home'))
@@ -120,7 +132,9 @@ it('renders social metadata for the collection homepage', function () {
         ->assertSee('property="og:locale" content="en_GB"', false)
         ->assertSee('name="twitter:site" content="@freekmurze"', false)
         ->assertSee('name="theme-color" content="#292a22"', false)
-        ->assertSee("property=\"og:image\" content=\"{$collectionImage}\"", false)
+        ->assertSee('property="og:image" content="'.storedShareImageUrl('share/collection-'), false)
+        ->assertSee('name="twitter:image" content="'.storedShareImageUrl('share/collection-'), false)
+        ->assertSee('property="og:image:type" content="image/jpeg"', false)
         ->assertSee("rel=\"canonical\" href=\"{$home}\"", false);
 });
 
@@ -168,6 +182,28 @@ it('refreshes the cached collection when a record is stored', function () {
 
     expect($collection->summaries())->toHaveCount(2);
 });
+
+function storedShareImageUrl(string $pathPrefix): string
+{
+    return Storage::disk('public')->url($pathPrefix);
+}
+
+function expectStoredShareImage(string $url): void
+{
+    $path = substr($url, strlen(storedShareImageUrl('')));
+
+    Storage::disk('public')->assertExists($path);
+
+    $bytes = Storage::disk('public')->get($path);
+
+    [$width, $height, $type] = getimagesizefromstring($bytes);
+
+    expect($path)->toEndWith('.jpg')
+        ->and($type)->toBe(IMAGETYPE_JPEG)
+        ->and($width)->toBe(1200)
+        ->and($height)->toBe(630)
+        ->and(strlen($bytes))->toBeLessThan(150 * 1024);
+}
 
 /** @return array<string, mixed> */
 function structuredData(string $html): array

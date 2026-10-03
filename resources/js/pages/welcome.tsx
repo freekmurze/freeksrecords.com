@@ -45,7 +45,11 @@ export default function Welcome({
         <div
             className={`record-room ${hasSelectedRecord ? 'has-selected-record' : ''}`}
         >
-            <RecordRoomHead record={selected} social={social} />
+            <RecordRoomHead
+                record={selected}
+                sharedRecord={sharedRecord}
+                social={social}
+            />
             <div
                 className="record-room-content"
                 inert={hasSelectedRecord}
@@ -65,7 +69,7 @@ export default function Welcome({
                     <div className="collection-masthead">
                         <div className="listening-corner" aria-hidden="true">
                             <img
-                                src="/images/listening-corner.png"
+                                src="/images/listening-corner.webp"
                                 alt=""
                                 width={2048}
                                 height={683}

@@ -46,7 +46,7 @@
     text-shadow: 0 1px #fff0c380;
     background:
         linear-gradient(#22170ecc, #33211699),
-        url('/images/walnut.jpg') center / cover;
+        url('/images/walnut.webp') center / cover;
     box-shadow:
         inset 0 5px 8px #100b0877,
         0 3px 5px #1f150b66;
@@ -800,7 +800,7 @@
     pointer-events: none;
 }
 .listening-card-surface::before {
-    background: url('/images/room-patina.png') center / 100% 100% no-repeat;
+    background: url('/images/room-patina.webp') center / 100% 100% no-repeat;
     opacity: 0.14;
     mask-image: linear-gradient(
         90deg,

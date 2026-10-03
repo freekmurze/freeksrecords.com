@@ -18,7 +18,7 @@ class RecordShareImage
         $ink = $this->color($image, 38, 39, 32);
         $woodEdge = $this->color($image, 167, 122, 75);
 
-        $wood = $this->asset('images/walnut.jpg');
+        $wood = $this->asset(resource_path('images/walnut.jpg'));
         imagecopyresampled($image, $wood, 24, 284, 0, 0, 1152, 322, imagesx($wood), imagesy($wood));
         imagefilledrectangle($image, 36, 296, 1164, 591, $this->color($image, 15, 8, 3, 54));
         imageline($image, 24, 284, 1176, 284, $woodEdge);
@@ -26,7 +26,7 @@ class RecordShareImage
 
         imagettftext($image, 68, 0, 44, 170, $ink, public_path('fonts/barlow-condensed-bold.ttf'), "Freek's records.");
 
-        $stereo = $this->asset('images/listening-corner.png');
+        $stereo = $this->asset(resource_path('images/listening-corner.png'));
         imagecopyresampled($image, $stereo, 556, 65, 0, 0, 618, 206, imagesx($stereo), imagesy($stereo));
 
         $shadow = $this->color($image, 12, 7, 4, 35);
@@ -45,7 +45,7 @@ class RecordShareImage
             imagecopyresampled($image, $cover, $left, 328, 0, 0, 208, 208, imagesx($cover), imagesy($cover));
         }
 
-        return $this->toPng($image);
+        return $this->toJpeg($image);
     }
 
     /** @param array<string, mixed> $record */
@@ -104,7 +104,7 @@ class RecordShareImage
 
         imagettftext($image, 18, 0, 614, 543, $accent, $body, $year);
 
-        return $this->toPng($image);
+        return $this->toJpeg($image);
     }
 
     protected function paperCanvas(): GdImage
@@ -113,7 +113,7 @@ class RecordShareImage
 
         imagefill($image, 0, 0, $this->color($image, 232, 221, 196));
 
-        $grain = $this->asset('images/paper-grain.png');
+        $grain = $this->asset(public_path('images/paper-grain.png'));
         imagesettile($image, $grain);
         imagefilledrectangle($image, 0, 0, 1200, 630, IMG_COLOR_TILED);
 
@@ -145,10 +145,12 @@ class RecordShareImage
         return [$size, $lines];
     }
 
-    protected function toPng(GdImage $image): string
+    protected function toJpeg(GdImage $image): string
     {
+        imageinterlace($image, true);
+
         ob_start();
-        imagepng($image);
+        imagejpeg($image, null, 82);
 
         return ob_get_clean() ?: '';
     }
@@ -172,7 +174,7 @@ class RecordShareImage
 
     protected function asset(string $path): GdImage
     {
-        $bytes = @file_get_contents(public_path($path));
+        $bytes = @file_get_contents($path);
         $image = $bytes ? @imagecreatefromstring($bytes) : false;
 
         if ($image === false) {

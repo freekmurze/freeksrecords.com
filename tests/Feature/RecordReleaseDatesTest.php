@@ -53,8 +53,11 @@ it('enriches pages with stored original dates without overwriting the pressing d
 
     $this->get(route('home'))->assertInertia(fn (Assert $page) => $page
         ->where('collection.records.0.originalReleaseDate', '1970-11-27')
-        ->where('collection.records.0.pressingReleaseDate', '2021-08-06')
         ->where('collection.records.0.originalYear', 1970));
+
+    $this->getJson(route('recordDetails', ['instanceId' => 2189134981]))
+        ->assertJsonPath('originalReleaseDate', '1970-11-27')
+        ->assertJsonPath('pressingReleaseDate', '2021-08-06');
 });
 
 it('preserves a verified date on later date syncs', function () {

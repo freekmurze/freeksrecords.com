@@ -2,25 +2,15 @@
 
 namespace App\Http\Controllers;
 
-use App\Support\RecordCollection;
-use App\Support\RecordShareImage;
-use Illuminate\Http\Response;
-use Illuminate\Support\Facades\Cache;
+use App\Support\StoredShareImages;
+use Illuminate\Http\RedirectResponse;
 
 class CollectionShareImageController extends Controller
 {
-    public function __invoke(RecordCollection $collection, RecordShareImage $image): Response
+    public function __invoke(StoredShareImages $shareImages): RedirectResponse
     {
-        $records = $collection->latest(5);
-
-        $covers = array_column($records, 'cover');
-        $cacheKey = 'collection-share-image-v2:'.hash('sha256', json_encode($covers, JSON_THROW_ON_ERROR));
-
-        $png = Cache::store('file')->rememberForever($cacheKey, fn (): string => $image->renderCollection($records));
-
-        return response($png, headers: [
-            'Content-Type' => 'image/png',
-            'Cache-Control' => 'public, max-age=86400',
-        ]);
+        return redirect()
+            ->away($shareImages->collectionUrl())
+            ->setCache(['public' => true, 'max_age' => 3600, 's_maxage' => 3600]);
     }
 }

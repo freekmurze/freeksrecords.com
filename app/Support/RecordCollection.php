@@ -4,6 +4,7 @@ namespace App\Support;
 
 use App\Models\CollectionRecord;
 use Carbon\CarbonImmutable;
+use Illuminate\Support\Arr;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\File;
@@ -12,7 +13,7 @@ use RuntimeException;
 
 class RecordCollection
 {
-    protected string $summariesCacheKey = 'record-collection-summaries-v1';
+    protected string $summariesCacheKey = 'record-collection-summaries-v2';
 
     public function __construct(
         protected RecordReleaseDates $dates,
@@ -43,8 +44,9 @@ class RecordCollection
     }
 
     /**
-     * The records without their tracklists, enriched with release dates and
-     * share metadata. Cached until the collection changes.
+     * The records without their tracklists and the fields the shelf never
+     * shows, enriched with release dates and share metadata. Cached until
+     * the collection changes.
      *
      * @return array<int, array<string, mixed>>
      */
@@ -165,8 +167,16 @@ class RecordCollection
         ], false);
         $record['shareDescription'] = "{$record['displayTitle']} by {$record['artist']}{$year}, from Freek's vinyl collection. Explore the artwork, tracklist and links to listen.";
 
-        unset($record['tracks']);
-
-        return $record;
+        return Arr::except($record, [
+            'tracks',
+            'catalogNumber',
+            'coverSource',
+            'discogsUrl',
+            'edition',
+            'musicbrainzId',
+            'originalDateSource',
+            'pressingReleaseDate',
+            'trackSource',
+        ]);
     }
 }
