@@ -17,7 +17,7 @@ class CacheAtEdge
         }
 
         $response->headers->remove('Set-Cookie');
-        $response->headers->set('Cache-Control', 'max-age=60, public, s-maxage=600');
+        $response->headers->set('Cache-Control', 'max-age=60, public, s-maxage=86400');
 
         return $response;
     }
