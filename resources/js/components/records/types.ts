@@ -61,7 +61,15 @@ export type SocialMeta = {
 export type CollectionMode = 'recent' | 'decade' | 'genre' | 'artist';
 export type CollectionGroup = { name: string; count: number };
 
-export type CollectionRecordSummary = Omit<CollectionRecord, 'tracks'> & {
+export type CollectionRecordSummary = Omit<
+    CollectionRecord,
+    | 'tracks'
+    | 'catalogNumber'
+    | 'discogsUrl'
+    | 'edition'
+    | 'pressingReleaseDate'
+    | 'trackSource'
+> & {
     trackTitles: string[];
     shareUrl: string;
     shareDescription?: string;

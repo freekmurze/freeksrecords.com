@@ -52,7 +52,7 @@
                 <meta data-inertia="og:image" property="og:image" content="{{ $image }}">
                 <meta data-inertia="og:image:width" property="og:image:width" content="1200">
                 <meta data-inertia="og:image:height" property="og:image:height" content="630">
-                <meta data-inertia="og:image:type" property="og:image:type" content="image/png">
+                <meta data-inertia="og:image:type" property="og:image:type" content="image/jpeg">
                 <meta data-inertia="og:image:alt" property="og:image:alt" content="{{ $imageAlt }}">
                 <meta data-inertia="twitter:card" name="twitter:card" content="summary_large_image">
                 <meta data-inertia="twitter:title" name="twitter:title" content="{{ $title }}">

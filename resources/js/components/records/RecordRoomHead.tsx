@@ -4,35 +4,43 @@ import RecordShareImageController from '@/actions/App/Http/Controllers/RecordSha
 
 import type {
     CollectionRecordSummary,
+    SharedRecord,
     SocialMeta,
 } from '@/components/records/types';
 
 type RecordRoomHeadProps = {
     record: CollectionRecordSummary | null;
+    sharedRecord: SharedRecord | null;
     social: SocialMeta;
 };
 
 /** Bump together with the `v` query the server adds to shared record images. */
-const recordShareImageVersion = 3;
+const recordShareImageVersion = 4;
 
 /**
  * Title, social cards and structured data for the collection or the open
  * record. With SSR this is the only source of these tags; app.blade.php only
  * renders them as a fallback when the SSR server is unavailable.
  */
-export function RecordRoomHead({ record, social }: RecordRoomHeadProps) {
+export function RecordRoomHead({
+    record,
+    sharedRecord,
+    social,
+}: RecordRoomHeadProps) {
     const title = record
         ? `${record.displayTitle} by ${record.artist}`
         : social.title;
     const description = record?.shareDescription ?? social.description;
     const url = record ? new URL(record.shareUrl, social.url).href : social.url;
     const image = record
-        ? new URL(
-              RecordShareImageController.url(record.instanceId, {
-                  query: { v: recordShareImageVersion },
-              }),
-              social.url,
-          ).href
+        ? record.instanceId === sharedRecord?.instanceId
+            ? sharedRecord.image
+            : new URL(
+                  RecordShareImageController.url(record.instanceId, {
+                      query: { v: recordShareImageVersion },
+                  }),
+                  social.url,
+              ).href
         : social.image;
     const imageAlt = record
         ? `${record.displayTitle} sleeve and vinyl, by ${record.artist}`
@@ -95,7 +103,7 @@ export function RecordRoomHead({ record, social }: RecordRoomHeadProps) {
             <meta
                 head-key="og:image:type"
                 property="og:image:type"
-                content="image/png"
+                content="image/jpeg"
             />
             <meta
                 head-key="og:image:alt"
