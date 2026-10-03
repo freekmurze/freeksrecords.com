@@ -5,6 +5,7 @@ namespace App\Console\Commands;
 use App\Models\CollectionRecord;
 use App\Support\Discogs;
 use App\Support\DiscogsRecordMapper;
+use App\Support\EdgeCache;
 use App\Support\RecordCollection;
 use App\Support\RecordCoverImages;
 use Illuminate\Console\Command;
@@ -24,6 +25,7 @@ class SyncDiscogsCollectionCommand extends Command
         DiscogsRecordMapper $mapper,
         RecordCollection $collection,
         RecordCoverImages $images,
+        EdgeCache $edgeCache,
     ): int {
         if (! CollectionRecord::query()->exists()) {
             $this->call('records:import-snapshot');
@@ -79,6 +81,8 @@ class SyncDiscogsCollectionCommand extends Command
         } catch (ConnectionException|RequestException $exception) {
             $this->error("Discogs sync interrupted. Imported records are saved; rerun to resume. {$exception->getMessage()}");
 
+            $this->purgeEdgeCacheWhenChanged($edgeCache, $imported);
+
             return self::FAILURE;
         }
 
@@ -88,6 +92,8 @@ class SyncDiscogsCollectionCommand extends Command
         $this->call('records:copy-covers');
 
         $this->comment("Imported {$imported} new records, removed {$removed}, skipped {$failed}.");
+
+        $this->purgeEdgeCacheWhenChanged($edgeCache, $imported + $removed);
 
         return $failed ? self::FAILURE : self::SUCCESS;
     }
@@ -126,6 +132,25 @@ class SyncDiscogsCollectionCommand extends Command
 
             return $mapper->placeholderCover;
         }
+    }
+
+    protected function purgeEdgeCacheWhenChanged(EdgeCache $edgeCache, int $changedRecords): void
+    {
+        if ($changedRecords === 0) {
+            return;
+        }
+
+        if (! $edgeCache->isConfigured()) {
+            $this->warn('The edge cache is not configured, so cached pages update within a day.');
+
+            return;
+        }
+
+        $this->info('Purging the edge cache...');
+
+        $edgeCache->purge()
+            ? $this->comment('Purged the edge cache.')
+            : $this->warn('The edge cache could not be purged, so cached pages update within a day.');
     }
 
     /** @param array<int, int> $seenInstanceIds */

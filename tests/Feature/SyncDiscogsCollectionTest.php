@@ -2,6 +2,7 @@
 
 use App\Support\RecordCollection;
 use GuzzleHttp\Promise\PromiseInterface;
+use Illuminate\Http\Client\Request;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Sleep;
@@ -137,6 +138,76 @@ it('does not clear the existing collection when Discogs fails', function () {
 
     Http::assertSentCount(1);
     $this->assertDatabaseCount('collection_records', 1);
+});
+
+it('purges the edge cache after a sync that changes the collection', function () {
+    config([
+        'services.laravel_cloud.purge_token' => 'purge-token',
+        'services.laravel_cloud.environment_id' => 'env-123',
+    ]);
+    [$kept, $sold] = $this->collection->snapshot();
+    $this->collection->storeMany([$kept, $sold]);
+    Http::fake([
+        'api.discogs.com/users/*' => discogsCollectionPage([discogsCollectionEntry($kept['instanceId'], $kept['id'])]),
+        'cloud.laravel.com/*' => Http::response(),
+    ]);
+
+    $this->artisan('records:sync-discogs')
+        ->expectsOutput('Purged the edge cache.')
+        ->assertSuccessful();
+
+    Http::assertSent(fn (Request $request): bool => $request->method() === 'POST'
+        && $request->url() === 'https://cloud.laravel.com/api/environments/env-123/purge-edge-cache'
+        && $request->hasHeader('Authorization', 'Bearer purge-token'));
+});
+
+it('keeps the edge cache when a sync changes nothing', function () {
+    config([
+        'services.laravel_cloud.purge_token' => 'purge-token',
+        'services.laravel_cloud.environment_id' => 'env-123',
+    ]);
+    $this->collection->store($this->existing);
+    Http::fake([
+        'api.discogs.com/users/*' => discogsCollectionPage([discogsCollectionEntry($this->existing['instanceId'], $this->existing['id'])]),
+        'cloud.laravel.com/*' => Http::response(),
+    ]);
+
+    $this->artisan('records:sync-discogs')->assertSuccessful();
+
+    Http::assertNotSent(fn (Request $request): bool => str_contains($request->url(), 'cloud.laravel.com'));
+});
+
+it('skips the edge cache purge when it is not configured', function () {
+    [$kept, $sold] = $this->collection->snapshot();
+    $this->collection->storeMany([$kept, $sold]);
+    Http::fake([
+        'api.discogs.com/users/*' => discogsCollectionPage([discogsCollectionEntry($kept['instanceId'], $kept['id'])]),
+    ]);
+
+    $this->artisan('records:sync-discogs')
+        ->expectsOutput('The edge cache is not configured, so cached pages update within a day.')
+        ->assertSuccessful();
+
+    Http::assertSentCount(1);
+});
+
+it('finishes the sync when the edge cache purge fails', function () {
+    config([
+        'services.laravel_cloud.purge_token' => 'purge-token',
+        'services.laravel_cloud.environment_id' => 'env-123',
+    ]);
+    [$kept, $sold] = $this->collection->snapshot();
+    $this->collection->storeMany([$kept, $sold]);
+    Http::fake([
+        'api.discogs.com/users/*' => discogsCollectionPage([discogsCollectionEntry($kept['instanceId'], $kept['id'])]),
+        'cloud.laravel.com/*' => Http::response(['message' => 'This action is unauthorized.'], 403),
+    ]);
+
+    $this->artisan('records:sync-discogs')
+        ->expectsOutput('The edge cache could not be purged, so cached pages update within a day.')
+        ->assertSuccessful();
+
+    $this->assertDatabaseMissing('collection_records', ['instance_id' => $sold['instanceId']]);
 });
 
 it('can rerun the snapshot import without duplicating collection copies', function () {
