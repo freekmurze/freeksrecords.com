@@ -20,6 +20,11 @@ return [
         'user_agent' => "Freek's Records/1.0 (https://freeksrecords.com)",
     ],
 
+    'laravel_cloud' => [
+        'purge_token' => env('LARAVEL_CLOUD_PURGE_TOKEN'),
+        'environment_id' => env('LARAVEL_CLOUD_ENVIRONMENT_ID'),
+    ],
+
     'musicbrainz' => [
         'user_agent' => "Freek's Records/1.0 (https://freeksrecords.com)",
     ],
